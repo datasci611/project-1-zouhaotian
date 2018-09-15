@@ -1,0 +1,152 @@
+---
+title: "Project 1"
+author: "Haotian Zou"
+date: "9/14/2018"
+output: html_document
+---
+
+###**Description of Four Datasets: **
+
+I choose these four datasets: `ChickWeight`, `ToothGrowth`, `Seatbelts`, `airquality`.
+
+For `ChickWeight` dataset, it includes:
+
+>The effect of four diets on growth (weight) in grams for chicks from 0 to 21 days.
+
+The entire dataset consists of:
+
+>The response variable is weight. The covariates are time in days, identifier of chicks, and diet category. There are 578 observations.
+
+The original source of dataset is:
+
+>Crowder, M. and Hand, D. (1990), Analysis of Repeated Measures, Chapman and Hall (example 5.3); Hand, D. and Crowder, M. (1996), Practical Longitudinal Data Analysis, Chapman and Hall (table A.2); Pinheiro, J. C. and Bates, D. M. (2000) Mixed-effects Models in S and S-PLUS, Springer.
+
+
+For `ToothGrowth` dataset, it includes:
+
+>The effect of Vitamin C on tooth growth (length of odontoblasts) in centimeters for Guinea pigs.
+
+The entire dataset consists of:
+
+>The response variable is tooth length. The covariates are supplement type (VC or OJ), dose in milligrams/day. There are 60 observations.
+
+The original source of dataset is:
+
+>C. I. Bliss (1952). The Statistics of Bioassay. Academic Press.
+
+
+For `Seatbelts` dataset, it includes:
+
+>The number of car drivers killed or seriously injured monthly in UK, during Jan 1969 to Dec 1984, while seat belts were compulsory on 31 Jan 1983.
+
+The entire dataset consists of:
+
+>Number of car drivers killed or seriously injured monthly. It also includes killed drivers, passengers killed on front or rear seat, distance driven, petrol price, number of van drivers, whether law was in effect. There are 192 observations.
+
+The original source of dataset is:
+
+>Harvey, A.C. (1989). Forecasting, Structural Time Series Models and the Kalman Filter. Cambridge University Press, pp. 519–523; Durbin, J. and Koopman, S. J. (2001). Time Series Analysis by State Space Methods. Oxford University Press. http://www.ssfpack.com/dkbook/.
+
+
+For `airquality` dataset, it includes:
+
+>Daily air quality data in New York from May to September 1973.
+
+The entire dataset consists of:
+
+>Mean ozone (ppb), solar radiation (lang), average wind speed (mph), temperature (F), month and date. There are 153 observations.
+
+The original source of dataset is:
+
+>The data were obtained from the New York State Department of Conservation (ozone data) and the National Weather Service (meteorological data).
+
+###**Read Data: **
+
+```{r}
+  library(tidyverse)
+
+  data("ChickWeight")
+  data("ToothGrowth")
+  data("Seatbelts")
+  data("airquality")
+```
+
+###**Figures: **
+
+```{r}
+ds_1 <- as.tibble(ChickWeight) %>% 
+  group_by(Chick) %>% 
+  mutate(baseweight=min(weight), wt_diff=weight-baseweight)
+ds_1 %>%
+  group_by(Diet) %>% 
+  filter(Time==21) %>% 
+  summarise(mean=mean(wt_diff))
+ds_1 %>% 
+  ggplot(mapping=aes(x=Time, y=wt_diff, group=Chick)) +
+  geom_point() + 
+  geom_line(mapping=aes(color=Diet)) +
+  xlab("Time (Days)") +
+  ylab("Weight Growth from Baseline")
+```
+
+```{r}
+ds_2 <- as.tibble(ToothGrowth) %>% 
+  group_by(supp) %>% 
+  arrange(dose)
+ds_2 %>% 
+  group_by(dose, supp) %>% 
+  summarise(mean=mean(len))
+ds_2 %>% 
+  ggplot(mapping=aes(x=as.factor(dose), y=len, color=supp)) +
+    geom_boxplot() +
+    xlab("dose (mg/day)") +
+    ylab("tooth length (cm)")
+```
+
+```{r}
+ds_3 <- as.tibble(Seatbelts)
+ds_3 <- mutate(ds_3, month=1:nrow(ds_3) %% 12)
+ds_3$month <- sapply(ds_3$month, function(x) if (x==0) 12 else x)
+ds_3 %>% 
+  group_by(month) %>% 
+  summarise(mean=mean(drivers))
+ds_3 %>% 
+  ggplot(mapping=aes(x=as.factor(month))) +
+    geom_point(mapping=aes(y=drivers, color='drivers')) + 
+    geom_point(mapping=aes(y=DriversKilled, color='DriversKilled')) +
+    geom_point(mapping=aes(y=front, color='front')) +
+    geom_point(mapping=aes(y=rear, color='rear')) +
+    xlab('Month') + 
+    ylab('Drivers Killed or Injured')
+```
+
+```{r}
+ds_4 <- as.tibble(airquality)
+ds_4 %>% 
+  group_by(Month) %>% 
+  summarise(mean=mean(Ozone, na.rm=TRUE))
+ds_4 %>% 
+  filter(!is.na(Ozone)) %>% 
+  ggplot(mapping=aes(x=as.factor(Month), y=Ozone)) + 
+    geom_boxplot() + 
+    xlab('Month') + 
+    ylab('Mean Ozone (ppb)')
+```
+
+###**Results: **
+
+>The first plot is a spaghetti plot from `ChickWeight` dataset. The response variable is weight growth from baseline (0 days). The covariates are time (days), from baseline (0 days) to 21 days, and diet. One observation do not have measurements after 12 days. The mean weight growth is 136 grams for diet 1, 174 grams for diet 2, 230 grams for diet 3, and 198 grams for diet 4 on day 21. The spaghetti plot also shows that diet 3 has largest growth, and diet 1 has smallest growth. Within each diet, weight growth has a linear trend with respect to time.
+
+>The next step is to check assumption for generalized linear model, and if model assumption holds, we would fit this model using covariates and response variable above.
+
+>The second plot is a boxplot from `ToothGrowth` dataset. The response variable is tooth length (cm). The covariates are dose (0.5 mg/day, 1 mg/day, 2 mg/day) and supplement type (OJ, VC). The mean tooth length for OJ group on 0.5 mg/day, 1 mg/day, 2 mg/day are 13.2 cm, 22.7 cm, 26.1 cm, respectively, while for VC group are 7.98 cm, 16.8 cm, 26.1 cm. The boxplot shows that for dose 0.5 mg/day, and 1 mg/day, OJ group has larger variance than VC group. But for dose 2 mg/day, VC group has a larger variance.
+
+>The next step is to test if there is significant difference of tooth length between OJ group and VC group, using a two-way ANOVA model.
+
+>The third plot is a scatter plot from `Seatbelts` dataset. The response variable is number of drivers killed or injured. The covariate is month. The mean number of drivers killed or injured on December is 2116, while the mean number of drivers killed or injured on June is 1517, showing a large distinction. The plot also shows that number of drivers killed or injured increased when weather gets colder. But there is no large difference for number of drivers killed each month.
+
+>The next step is to test the difference of drivers killed or injured between cold weather and hot weather, and before seat belts are mandatory, and after.
+
+>The fourth plot is a boxplot from `airquality` dataset. The response variable is mean ozone (ppb). The covariate is month. Mean ozone concentration is 60.0 ppb on August, while mean ozone is 31.4 on September. The boxplot also shows that on July and August, the mean ozone concentration is much higher than May, June and September.
+
+>The next step is to test the difference of ozone concentration among five months.
